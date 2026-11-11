@@ -1,6 +1,8 @@
 /** Typed shell copy for every shipped language owned by the Electron shell. */
 
-const desktopProductName = process.platform === 'win32' ? 'AI小智 harness' : 'DeepSeek Harness'
+const desktopProductName = typeof process !== 'undefined' && 'platform' in process && process.platform === 'win32'
+  ? 'AI小智 harness'
+  : 'DeepSeek Harness'
 
 export const en = {
   cliCommandMenu: 'Manage dsh Command…',
