@@ -1,0 +1,58 @@
+name: Build AI XiaoZhi Harness for Windows
+
+on:
+  push:
+    branches:
+      - ai-xiaozhi-harness
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/ai-xiaozhi-harness-windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v5.0.0
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check Windows names and launcher
+        run: |
+          node apps/desktop/scripts/installer-locales.mjs
+          pnpm exec vitest run apps/desktop/tests/cli-launcher.spec.ts apps/desktop/tests/locale.spec.ts apps/desktop/tests/installer-locales.spec.ts
+      - name: Configure the unsigned test package
+        run: |
+          @'
+          DSH_DESKTOP_APP_ID=io.github.mumukun.ai-xiaozhi-harness
+          DSH_DESKTOP_AUTO_UPDATE_ENV=production
+          DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN=https://harness.deepseek.com
+          '@ | Set-Content -LiteralPath apps/desktop/.env.windows -Encoding utf8NoBOM
+      - name: Check packaging configuration
+        run: pnpm run package:desktop:win:x64:unsigned --check
+      - name: Package and verify Windows runtime
+        run: pnpm run package:desktop:win:x64:unsigned
+      - name: Upload the Windows installer
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ai-xiaozhi-harness-win-x64
+          path: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+          if-no-files-found: error
+      - name: Upload packaging diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ai-xiaozhi-harness-build-logs
+          path: apps/desktop/.desktop-build/packaging-runs/
+          if-no-files-found: ignore
