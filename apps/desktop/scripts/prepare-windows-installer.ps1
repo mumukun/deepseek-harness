@@ -1,6 +1,6 @@
 <# Compile the x86 DWM helper and raster assets embedded in the NSIS installer. #>
 [CmdletBinding()]
-param([string]$OutputDirectory, [switch]$TestProgress, [switch]$CompileProgressOnly)
+param([string]$OutputDirectory, [string]$ProductName, [switch]$TestProgress, [switch]$CompileProgressOnly)
 $ErrorActionPreference = 'Stop'
 $installerRoot = Join-Path $PSScriptRoot '../installer'
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $PSScriptRoot '../.desktop-build/targets/win-x64/installer-ui' }
@@ -77,7 +77,30 @@ foreach ($asset in @('brand', 'brand-2x', 'brand-dark', 'brand-dark-2x', 'uninst
             try {
                 $background = if ($asset -like '*dark*') { [Drawing.Color]::FromArgb(21, 21, 23) } else { [Drawing.Color]::White }
                 $graphics.Clear($background)
-                $graphics.DrawImage($image, 0, 0, $image.Width, $image.Height)
+                if ($ProductName -and $asset -like 'brand*') {
+                    # Preserve the upstream icon above its original wordmark.
+                    $textTop = [int]($image.Height * 0.75)
+                    $graphics.SetClip([Drawing.Rectangle]::new(0, 0, $image.Width, $textTop))
+                    $graphics.DrawImage($image, 0, 0, $image.Width, $image.Height)
+                    $graphics.ResetClip()
+                    $graphics.TextRenderingHint = [Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+                    $font = [Drawing.Font]::new('Microsoft YaHei UI', (24 * $image.Width / 600), [Drawing.FontStyle]::Bold, [Drawing.GraphicsUnit]::Pixel)
+                    $color = if ($asset -like '*dark*') { [Drawing.Color]::White } else { [Drawing.Color]::FromArgb(15, 17, 21) }
+                    $ink = [Drawing.SolidBrush]::new($color)
+                    $format = [Drawing.StringFormat]::new()
+                    try {
+                        $format.Alignment = [Drawing.StringAlignment]::Center
+                        $format.LineAlignment = [Drawing.StringAlignment]::Center
+                        $textBounds = [Drawing.RectangleF]::new(0, $textTop, $image.Width, ($image.Height - $textTop))
+                        $graphics.DrawString($ProductName, $font, $ink, $textBounds, $format)
+                    } finally {
+                        $format.Dispose()
+                        $ink.Dispose()
+                        $font.Dispose()
+                    }
+                } else {
+                    $graphics.DrawImage($image, 0, 0, $image.Width, $image.Height)
+                }
             } finally { $graphics.Dispose() }
             $bitmap.Save((Join-Path $output "$asset.bmp"), [Drawing.Imaging.ImageFormat]::Bmp)
         } finally { $bitmap.Dispose() }

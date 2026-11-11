@@ -102,6 +102,15 @@ body {
   -webkit-user-drag: none;
 }
 
+.brand-name {
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsw-font-family-brand), "Microsoft YaHei UI", sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 40px;
+  text-align: center;
+}
+
 .tagline {
   margin: 0;
   color: var(--dsw-alias-label-secondary);
